@@ -50,7 +50,7 @@ async def process_help_command(msg: types.Message):
 
 @dp.message_handler(commands=['help'])
 async def process_help_command(msg: types.Message):
-    await msg.reply("/game - Начать игру\n/inu - Я еще не решил")
+    await msg.reply("/game - Начать игру\n/stop - Окончить игру")
 
 
 @dp.message_handler()

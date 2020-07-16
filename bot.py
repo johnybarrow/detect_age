@@ -1,3 +1,5 @@
+#! /venv/bin python3.8
+
 from aiogram import executor
 
 from misc import dp
