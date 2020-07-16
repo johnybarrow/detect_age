@@ -77,7 +77,8 @@ async def number_end(msg: types.Message):
         await bot.send_message(msg.from_user.id, ans)
         await bot.send_photo(msg.from_user.id,
                              open(f"dataset/{prev_img_id}_process.jpg", 'rb').read(),
-                             caption="А вот, что об этом думаешь наша нейросеть")
+                             caption="А вот, что об этом думает наша нейросеть")
+
         await bot.send_photo(msg.from_user.id, open(f'dataset/{new_img_id}.jpg', 'rb').read(),
                              caption="А сколько лет Вы дадите этому человеку?")
     else:
