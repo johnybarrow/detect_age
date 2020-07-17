@@ -21,25 +21,19 @@ def get_new_photo(photo):
     result = data.predict(img)
 
     font = ImageFont.truetype("handlers/Lemon.ttf", 20)
+    ans = ""
 
-    for info in result:
+    for i, info in enumerate(result):
         shape = [(info['face'][0], info['face'][1]), (info['face'][2], info['face'][3])]
         draw = ImageDraw.Draw(img)
 
-        if info['gender']['value'].title() == 'Male':
-            gender = 'Мужчина'
-        else:
-            gender = 'Женщина'
+        gender = 'Мужчина' if info['gender']['value'].title() == 'Male' else 'Женщина'
         gender_percent = int(info['gender']['confidence'])
         age = info['age']['value']
-        if age % 10 in (0, 5, 6, 7, 8, 9):
-            age_name = 'лет'
-        elif age % 10 == 1:
-            age_name = 'год'
-        else:
-            age_name = 'года'
-
+        age_name = name_of_age(age)
         age_percent = int(info['age']['confidence'])
+
+        ans += f"{i + 1}) {gender} (~{gender_percent}%)\n     {age} {age_name}. (~{age_percent}%)\n"
 
         draw.text(
             (info['face'][0] - 10, info['face'][3] + 10),
@@ -51,26 +45,7 @@ def get_new_photo(photo):
 
     imgByteArr = BytesIO()
     img.save(imgByteArr, format='JPEG')
-    return imgByteArr.getvalue()
-
-
-def get_age(photo):
-    img = Image.open(BytesIO(photo)).convert("RGB")
-    result = data.predict(img)
-    ans = ""
-
-    for i, info in enumerate(result):
-        gender = 'Мужчина' if info['gender']['value'].title() == 'Male' else 'Женщина'
-        gender_percent = int(info['gender']['confidence'])
-        age = info['age']['value']
-        age_name = name_of_age(age)
-        age_percent = int(info['age']['confidence'])
-
-        ans += f"{i + 1}) {gender} (~{gender_percent}%)\n     {age} {age_name}. (~{age_percent}%)\n"
-
-    if ans != "":
-        return ans
-    return "Мы не смогли распознать Ваше лицо :( Пожалуйста, поробуйте еще раз"
+    return imgByteArr.getvalue(), ans or "Мы не смогли распознать Ваше лицо :( Пожалуйста, поробуйте еще раз"
 
 
 def name_of_age(age):

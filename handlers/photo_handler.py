@@ -1,28 +1,37 @@
 from aiogram import types
 from misc import dp, bot, TOKEN
 from requests import get
-from .detect import get_age, get_new_photo, name_of_age
-from json import loads
+from .detect import get_new_photo, name_of_age
+from json import loads, dumps
 from random import randint
-import re
 import asyncio
 from os import listdir
 
-players_array = dict()
-all_files = dict()
+all_files_json = 'handlers/all_files.json'
 
-age_dataset = open('dataset/age_set.txt').readlines()
+players_array = dict()
+
+try:
+    all_files = loads(all_files_json)
+except:
+    all_files = dict()
+
+MAX_FILES = 30
+
+age_dataset = [i.strip().split(',') for i in open('dataset/age_set.csv').readlines()]
 
 
 @dp.message_handler(content_types=['photo'])
 async def handle_photo(msg: types.Message):
     file_id = msg.photo[-1]['file_id']
     response = loads(get(f'https://api.telegram.org/bot{TOKEN}/getFile?file_id={file_id}').text)
+    await bot.send_chat_action(msg.from_user.id, 'typing')
 
     if response['ok']:
         photo = get(f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}').content
         print(f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}')
-        await bot.send_photo(msg.from_user.id, get_new_photo(photo), caption=get_age(photo))
+        new_photo_inf = get_new_photo(photo)
+        await bot.send_photo(msg.from_user.id, new_photo_inf[0], caption=new_photo_inf[1])
     else:
         await send_photo(msg.from_user.id, 'dataset/witcher.png',
                          "Хмм, зараза... Что-то не так, возможно фотка слишком тяжелая")
@@ -30,8 +39,8 @@ async def handle_photo(msg: types.Message):
 
 @dp.message_handler(commands=['game'])
 async def start_game(msg: types.Message):
-    new_img_id = randint(1, 17)
-    players_array[msg.from_user.id] = {'playing': True, 'prev_img': new_img_id}
+    new_img_id = randint(1, MAX_FILES)
+    players_array[msg.from_user.id] = {'playing': True, 'prev_img': new_img_id, 'score': 0, 'AI_score': 0}
     await msg.reply("Ну давайте немного поиграем:")
     await send_photo(msg.from_user.id, f'dataset/{new_img_id}.jpg', "Сколько лет Вы дадите этому человеку?")
 
@@ -40,7 +49,21 @@ async def start_game(msg: types.Message):
 async def stop(msg: types.Message):
     if msg.from_user.id in players_array:
         players_array[msg.from_user.id]['playing'] = False
-        await msg.reply("Игра окончена")
+        score, AI_score = players_array[msg.from_user.id]['score'], players_array[msg.from_user.id]['AI_score']
+
+        if score == AI_score:
+            frase = 'Ничья! Сыграете еще? /game'
+        elif score < AI_score:
+            frase = 'Ух ты! Вы одолели ИИ? А еще раз сможете? /game'
+        else:
+            frase = 'Вы проиграли ИИ, ну а кто бы справился? Попробуйте еще раз /game'
+
+        await msg.reply(f'Количество Ваших ошибок: {score}\n'
+                        f'Ошибок ИИ: {AI_score}\n'
+                        f'{frase}')
+
+        players_array[msg.from_user.id]['score'] = 0
+        players_array[msg.from_user.id]['AI_score'] = 0
 
 
 @dp.message_handler(commands=['send_all'])
@@ -50,7 +73,21 @@ async def send_all(msg: types.Message):
         if file.endswith('jpg'):
             await send_photo(msg.from_user.id, f'dataset/{file}')
 
+    open(all_files_json, 'w').write(dumps(all_files))
     print(len(all_files))
+
+
+@dp.message_handler(commands=['check_all'])
+async def check_all(msg: types.Message):
+    await msg.reply(r"Проверяю все ...")
+    all_files_in_check_all = sorted(listdir('dataset'))
+    for i, file in enumerate(all_files_in_check_all):
+        if file.split('.')[0] + '_process.jpg' not in all_files_in_check_all and \
+                'process' not in file and file.endswith('jpg'):
+            file = 'dataset/' + file
+            open(file.split('.')[0] + '_process.jpg', 'wb').write(get_new_photo(open(file, 'rb').read())[0])
+            await bot.send_message(msg.from_user.id, f'{i + 1}) {file}')
+    await bot.send_message(msg.from_user.id, f'Все файлы оцифрованы')
 
 
 @dp.message_handler(commands=['start'])
@@ -69,10 +106,14 @@ async def process_help_command(msg: types.Message):
 async def number_end(msg: types.Message):
     if msg.text.strip().isdigit() and msg.from_user.id in players_array and players_array[msg.from_user.id]['playing']:
         age = int(msg.text.strip())
-        real_age = get_age_by_id(players_array[msg.from_user.id]['prev_img'])
+        real_age, AI_age = get_age_by_id(players_array[msg.from_user.id]['prev_img'])
+
+        players_array[msg.from_user.id]['score'] += abs(real_age - age)
+        players_array[msg.from_user.id]['AI_score'] += abs(AI_age - age)
+
         prev_img_id = players_array[msg.from_user.id]['prev_img']
 
-        new_img_id = randint(1, 17)
+        new_img_id = randint(1, MAX_FILES)
         players_array[msg.from_user.id]['prev_img'] = new_img_id
 
         shablon = f"Вы думали, что ему/ей {age} {name_of_age(age)}, а на самом деле {real_age} {name_of_age(real_age)}"
@@ -95,18 +136,15 @@ async def number_end(msg: types.Message):
 
 
 def get_age_by_id(photo_id):
-    return int(re.findall(r'\d{1,4}', age_dataset[photo_id - 1])[0])
+    return int(age_dataset[photo_id - 1][1]), int(age_dataset[photo_id - 1][2])
 
 
 async def send_photo(to, filename, caption="", sleep_time=0):
     await bot.send_chat_action(to, 'upload_photo')
-    await asyncio.sleep(sleep_time)
+    if sleep_time:
+        await asyncio.sleep(sleep_time)
 
-    if filename in all_files:
-        file_tusent = all_files[filename]
-    else:
-        file_tusent = open(filename, 'rb').read()
-
+    file_tusent = all_files[filename] if filename in all_files else open(filename, 'rb').read()
     sended_photo = await bot.send_photo(to, file_tusent, caption=caption)
 
     if filename not in all_files:
