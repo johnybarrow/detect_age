@@ -1,4 +1,4 @@
-from age_and_gender import *
+from .age_and_gender import *
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import random
