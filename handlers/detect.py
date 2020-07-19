@@ -3,17 +3,13 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import random
 
-letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
-
 # https://python-scripts.com/predict-age-and-gender
 data = AgeAndGender()
 data.load_shape_predictor('handlers/models/shape_predictor_5_face_landmarks.dat')
 data.load_dnn_gender_classifier('handlers/models/dnn_gender_classifier_v1.dat')
 data.load_dnn_age_predictor('handlers/models/dnn_age_predictor_v1.dat')
 
-
-def get_random_string(length=10):
-    return ''.join(random.choice(letters) for _ in range(length))
+FONT_BORDER = 1
 
 
 def get_new_photo(photo):
@@ -32,14 +28,16 @@ def get_new_photo(photo):
         age = info['age']['value']
         age_name = name_of_age(age)
         age_percent = int(info['age']['confidence'])
-
         ans += f"{i + 1}) {gender} (~{gender_percent}%)\n     {age} {age_name}. (~{age_percent}%)\n"
 
-        draw.text(
-            (info['face'][0] - 10, info['face'][3] + 10),
-            f"{gender} (~{gender_percent}%)\n{age} {age_name}. (~{age_percent}%).",
-            fill='white', font=font, align='center'
-        )
+        text_to_write = f"{gender} (~{gender_percent}%)\n{age} {age_name}. (~{age_percent}%)."
+        x, y = info['face'][0] - 10, info['face'][3] + 10
+
+        draw.text((x + FONT_BORDER, y + FONT_BORDER), text_to_write, fill='black', font=font, align='center')
+        draw.text((x + FONT_BORDER, y - FONT_BORDER), text_to_write, fill='black', font=font, align='center')
+        draw.text((x - FONT_BORDER, y + FONT_BORDER), text_to_write, fill='black', font=font, align='center')
+        draw.text((x - FONT_BORDER, y - FONT_BORDER), text_to_write, fill='black', font=font, align='center')
+        draw.text((x, y), text_to_write, fill='white', font=font, align='center')
 
         draw.rectangle(shape, outline="red", width=5)
 

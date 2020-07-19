@@ -16,7 +16,8 @@ try:
 except:
     all_files = dict()
 
-MAX_FILES = 30
+MAX_FILES = 41
+GAME_BORDER = 10
 
 age_dataset = [i.strip().split(',') for i in open('dataset/age_set.csv').readlines()]
 
@@ -33,22 +34,22 @@ async def handle_photo(msg: types.Message):
         new_photo_inf = get_new_photo(photo)
         await bot.send_photo(msg.from_user.id, new_photo_inf[0], caption=new_photo_inf[1])
     else:
-        await send_photo(msg.from_user.id, 'dataset/witcher.png',
+        await send_photo(msg.from_user.id, 'dataset/witcher_process.jpg',
                          "Хмм, зараза... Что-то не так, возможно фотка слишком тяжелая")
 
 
 @dp.message_handler(commands=['game'])
 async def start_game(msg: types.Message):
     new_img_id = randint(1, MAX_FILES)
-    players_array[msg.from_user.id] = {'playing': True, 'prev_img': new_img_id, 'score': 0, 'AI_score': 0}
-    await msg.reply("Ну давайте немного поиграем:")
+    players_array[msg.from_user.id] = {'playing': True, 'prev_img': new_img_id, 'score': 0, 'AI_score': 0,
+                                       'was_id': [new_img_id]}
+    await msg.reply("Ну давайте  поиграем:")
     await send_photo(msg.from_user.id, f'dataset/{new_img_id}.jpg', "Сколько лет Вы дадите этому человеку?")
 
 
 @dp.message_handler(commands=['stop'])
-async def stop(msg: types.Message):
+async def stop_game(msg: types.Message):
     if msg.from_user.id in players_array:
-        players_array[msg.from_user.id]['playing'] = False
         score, AI_score = players_array[msg.from_user.id]['score'], players_array[msg.from_user.id]['AI_score']
 
         if score == AI_score:
@@ -58,12 +59,11 @@ async def stop(msg: types.Message):
         else:
             frase = 'Вы проиграли ИИ, ну а кто бы справился? Попробуйте еще раз /game'
 
-        await msg.reply(f'Количество Ваших ошибок: {score}\n'
-                        f'Ошибок ИИ: {AI_score}\n'
-                        f'{frase}')
+        await bot.send_message(msg.from_user.id, f'Количество Ваших ошибок: {score} {name_of_age(score)}\n'
+                                                 f'Ошибок ИИ: {AI_score}  {name_of_age(AI_score)}\n'
+                                                 f'{frase}')
 
-        players_array[msg.from_user.id]['score'] = 0
-        players_array[msg.from_user.id]['AI_score'] = 0
+        players_array[msg.from_user.id]['playing'] = False
 
 
 @dp.message_handler(commands=['send_all'])
@@ -73,6 +73,7 @@ async def send_all(msg: types.Message):
         if file.endswith('jpg'):
             await send_photo(msg.from_user.id, f'dataset/{file}')
 
+    await msg.reply('Это все')
     open(all_files_json, 'w').write(dumps(all_files))
     print(len(all_files))
 
@@ -91,10 +92,12 @@ async def check_all(msg: types.Message):
 
 
 @dp.message_handler(commands=['start'])
-async def process_help_command(msg: types.Message):
-    await msg.reply(f"Привет, {msg.from_user.first_name}! С моей помощью ты узнаешь на сколько лет ты выглядишь!\n"
-                    f"Меня создали с помощью я/п Python и нейронной сети, я являюсь проектом для конкурса \"Большая "
-                    f"перемена\"")
+async def process_start_command(msg: types.Message):
+    await msg.reply(
+        f"Привет, {msg.from_user.first_name}! С моей помощью ты узнаешь на сколько лет ты выглядишь. Просто отправь "
+        f"мне свое фото, а я пришлю тебе свои догадки!\n "
+        f"Меня создали с помощью я/п Python и нейронной сети, я являюсь проектом для конкурса \"Большая "
+        f"перемена\"")
 
 
 @dp.message_handler(commands=['help'])
@@ -114,6 +117,10 @@ async def number_end(msg: types.Message):
         prev_img_id = players_array[msg.from_user.id]['prev_img']
 
         new_img_id = randint(1, MAX_FILES)
+        while new_img_id in players_array[msg.from_user.id]['was_id']:
+            new_img_id = randint(1, MAX_FILES)
+
+        players_array[msg.from_user.id]['was_id'].append(new_img_id)
         players_array[msg.from_user.id]['prev_img'] = new_img_id
 
         shablon = f"Вы думали, что ему/ей {age} {name_of_age(age)}, а на самом деле {real_age} {name_of_age(real_age)}"
@@ -130,7 +137,12 @@ async def number_end(msg: types.Message):
         await bot.send_message(msg.from_user.id, ans)
         await send_photo(msg.from_user.id, f"dataset/{prev_img_id}_process.jpg",
                          "А вот, что об этом думает наша нейросеть", 2)
-        await send_photo(msg.from_user.id, f'dataset/{new_img_id}.jpg', "А сколько лет Вы дадите этому человеку?", 4)
+
+        if len(players_array[msg.from_user.id]['was_id']) == GAME_BORDER:
+            await stop_game(msg)
+        else:
+            await send_photo(msg.from_user.id, f'dataset/{new_img_id}.jpg', "А сколько лет Вы дадите этому человеку?",
+                             4)
     else:
         await bot.send_message(msg.from_user.id, "Извините, я Вас не понимаю\nПросто напомню, что есть команда /help")
 

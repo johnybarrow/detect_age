@@ -3,4 +3,4 @@ TOKEN
 */.idea
 __pycache__
 */__pycache__
-*.json
+all_files.json
