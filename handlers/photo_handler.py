@@ -5,7 +5,7 @@ from .detect import get_new_photo, name_of_age
 from json import loads, dumps
 from random import randint
 import asyncio
-from os import listdir
+from os import listdir, remove
 import re
 
 regex_link = re.compile(
@@ -49,7 +49,8 @@ async def handle_photo(msg: types.Message):
     if response['ok']:
         photo = get(f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}').content
         result_array['faces_num'] += 1
-        result_array['faces_links'].append(f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}')
+        result_array['faces_links'].append(
+            f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}')
         print(f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}')
         new_photo_inf = get_new_photo(photo)
         await bot.send_photo(msg.from_user.id, new_photo_inf[0], caption=new_photo_inf[1])
@@ -98,13 +99,22 @@ async def send_all(msg: types.Message):
         if file.endswith('jpg'):
             await send_photo(msg.from_user.id, f'dataset/{file}')
 
-    await msg.reply('Это все')
+    await msg.reply(f'Это все! {len(all_files)}')
     open(all_files_json, 'w').write(dumps(all_files))
     print(len(all_files))
 
 
+# @dp.message_handler(commands=['qq'])
+# async def qq(msg: types.Message):
+#     await msg.reply(r"Сам попросил ¯\_(ツ)_/¯")
+#     for file in sorted(listdir('dataset')):
+#         if 'process' in file and 'witcher' not in file:
+#             remove(f'dataset/{file}')
+#
+
+
 @dp.message_handler(commands=['send_stat'])
-async def send_all(msg: types.Message):
+async def send_stat(msg: types.Message):
     await bot.send_document(878744319, open('handlers/result_array.json', 'rb').read())
 
 
@@ -123,21 +133,42 @@ async def check_all(msg: types.Message):
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(msg: types.Message):
-    await msg.reply(
-        f"Привет, {msg.from_user.first_name}! С моей помощью ты узнаешь на сколько лет ты выглядишь. Просто отправь "
-        f"мне свое фото, а я пришлю тебе свои догадки!\n "
-        f"Меня создали с помощью я/п Python и нейронной сети, я являюсь проектом для конкурса \"Большая "
-        f"перемена\"")
+    await bot.send_message(msg.from_user.id,
+                           f"Привет, {msg.from_user.first_name}! Я могу *угадать возраст* человека по его фотографии!\n "
+                           f"Я - \"слабый\" (не 💪) искусственный интелект, то есть предназначен для выполнения "
+                           f"сторого одной задачи - "
+                           f"_определение возраста_. Это означает, что я и другие подобные мне ИИ - `совершенно` "
+                           f"безвредны, "
+                           f"и мы точно *НЕ* сможем захватить мир _(Ну хотя бы потому, что мы не знем как 😄)_",
+                           parse_mode=types.ParseMode.MARKDOWN)
+
+    await bot.send_chat_action(msg.from_user.id, 'typing')
+    await asyncio.sleep(8)
+
+    await bot.send_message(msg.from_user.id,
+                           f"Просто отправьте мне *фото человека* (например, Ваше 😄), а я, используя свою "
+                           f"`нейросеть`, попробую угадать сколько ему _лет_?",
+                           parse_mode=types.ParseMode.MARKDOWN)
+
+    await bot.send_chat_action(msg.from_user.id, 'typing')
+    await asyncio.sleep(4)
+
+    await bot.send_message(msg.from_user.id,
+                           f"Также Вы можете сразиться со мной в игре `\"Угадай сколько лет?\"`. Просто отправьте мне "
+                           f"/game и впишите ответ в числовом формате, например: `27`",
+                           parse_mode=types.ParseMode.MARKDOWN)
 
 
 @dp.message_handler(commands=['help'])
 async def process_help_command(msg: types.Message):
-    await msg.reply("/game - Начать игру\n/stop - Окончить игру")
+    await msg.reply("/game - Начать игру\n/stop - Окончить игру\n"
+                    "Чтобы я мог угадать возраст - просто пришлите мне фото нуного человека")
 
 
 @dp.message_handler(commands=['dev'])
 async def process_help_command(msg: types.Message):
-    await msg.reply("/send_all - Отправить мне все файлы\n/check_all - Обратать все возможные файлы\n"
+    await msg.reply("/send_all - Отправить мне все файлы\n"
+                    "/check_all - Обратать все возможные файлы\n"
                     "/send_stat - Прислать статистику игр")
 
 

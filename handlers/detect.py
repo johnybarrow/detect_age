@@ -16,7 +16,7 @@ def get_new_photo(photo):
     img = Image.open(BytesIO(photo)).convert("RGB")
     result = data.predict(img)
 
-    font = ImageFont.truetype("handlers/Lemon.ttf", 20)
+    font = ImageFont.truetype("handlers/Lemon.ttf", 26)
     ans = ""
 
     for i, info in enumerate(result):
@@ -47,7 +47,7 @@ def get_new_photo(photo):
 
 
 def name_of_age(age):
-    if age % 10 in (0, 5, 6, 7, 8, 9):
+    if age % 10 in (0, 5, 6, 7, 8, 9) or age in range(11, 21):
         return 'лет'
     elif age % 10 == 1:
         return 'год'
