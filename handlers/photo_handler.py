@@ -68,6 +68,7 @@ async def start_game(msg: types.Message):
         result_array[str(msg.from_user.id)] = []
 
     await msg.reply("Ну давайте  поиграем:")
+    print(f'dataset/{new_img_id}.jpg')
     await send_photo(msg.from_user.id, f'dataset/{new_img_id}.jpg', "Сколько лет Вы дадите этому человеку?")
 
 
