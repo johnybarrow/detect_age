@@ -3,7 +3,7 @@ from misc import dp, bot, TOKEN
 from requests import get
 from .detect import get_new_photo, name_of_age
 from json import loads, dumps
-from random import randint
+from random import randint, choice
 import asyncio
 from os import listdir, remove
 import re
@@ -18,6 +18,7 @@ regex_link = re.compile(
 
 all_files_json = 'handlers/all_files.json'
 result_array_json = 'handlers/result_array.json'
+# facts_txt = 'handlers/facts.txt'
 
 players_array = dict()
 
@@ -30,6 +31,8 @@ try:
     result_array = loads(open(result_array_json).read())
 except:
     result_array = {'faces_num': 0, 'faces_links': []}
+
+# funny_facts = open(facts_txt).read().split('\n')[:-1]
 
 print('all_files: ', all_files)
 print('result_array: ', result_array)
@@ -49,9 +52,7 @@ async def handle_photo(msg: types.Message):
     if response['ok']:
         photo = get(f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}').content
         result_array['faces_num'] += 1
-        result_array['faces_links'].append(
-            f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}')
-        print(f'https://api.telegram.org/file/bot{TOKEN}/{response["result"]["file_path"]}')
+        result_array['faces_links'].append((response["result"]["file_path"], msg.from_user.id))
         new_photo_inf = get_new_photo(photo)
         await bot.send_photo(msg.from_user.id, new_photo_inf[0], caption=new_photo_inf[1])
     else:
@@ -59,7 +60,7 @@ async def handle_photo(msg: types.Message):
                          "Хмм, зараза... Что-то не так, возможно фотка слишком тяжелая")
 
 
-@dp.message_handler(commands=['game'])
+@dp.message_handler(commands=['game', 'играть', 'сыграть', 'игра', 'play'])
 async def start_game(msg: types.Message):
     new_img_id = randint(1, MAX_FILES)
     players_array[msg.from_user.id] = {'playing': True, 'prev_img': new_img_id, 'score': 0, 'AI_score': 0,
@@ -68,11 +69,15 @@ async def start_game(msg: types.Message):
         result_array[str(msg.from_user.id)] = []
 
     await msg.reply("Ну давайте  поиграем:")
-    print(f'dataset/{new_img_id}.jpg')
     await send_photo(msg.from_user.id, f'dataset/{new_img_id}.jpg', "Сколько лет Вы дадите этому человеку?")
 
 
-@dp.message_handler(commands=['stop'])
+# @dp.message_handler(commands=['fact', 'facts', 'факт'])
+# async def start_game(msg: types.Message):
+#     await bot.send_message(msg.from_user.id, choice(funny_facts))
+
+
+@dp.message_handler(commands=['stop', 'стоп', 'остановить'])
 async def stop_game(msg: types.Message):
     if msg.from_user.id in players_array:
         score, AI_score = players_array[msg.from_user.id]['score'], players_array[msg.from_user.id]['AI_score']
@@ -111,7 +116,6 @@ async def send_all(msg: types.Message):
 #     for file in sorted(listdir('dataset')):
 #         if 'process' in file and 'witcher' not in file:
 #             remove(f'dataset/{file}')
-#
 
 
 @dp.message_handler(commands=['send_stat'])
@@ -135,16 +139,16 @@ async def check_all(msg: types.Message):
 @dp.message_handler(commands=['start'])
 async def process_start_command(msg: types.Message):
     await bot.send_message(msg.from_user.id,
-                           f"Привет, {msg.from_user.first_name}! Я могу *угадать возраст* человека по его фотографии!\n "
-                           f"Я - \"слабый\" (не 💪) искусственный интелект, то есть предназначен для выполнения "
-                           f"сторого одной задачи - "
-                           f"_определение возраста_. Это означает, что я и другие подобные мне ИИ - `совершенно` "
-                           f"безвредны, "
-                           f"и мы точно *НЕ* сможем захватить мир _(Ну хотя бы потому, что мы не знем как 😄)_",
+                           f"Привет, {msg.from_user.first_name}! Я могу *угадать возраст* человека по его фотографии!",
+                           # f"Я - \"слабый\" (не 💪) искусственный интелект, то есть предназначен для выполнения "
+                           # f"сторого одной задачи - "
+                           # f"_определение возраста_. Это означает, что я и другие подобные мне ИИ - `совершенно` "
+                           # f"безвредны, "
+                           # f"и мы точно *НЕ* сможем захватить мир _(Ну хотя бы потому, что мы не знем как 😄)_",
                            parse_mode=types.ParseMode.MARKDOWN)
 
     await bot.send_chat_action(msg.from_user.id, 'typing')
-    await asyncio.sleep(8)
+    await asyncio.sleep(3)
 
     await bot.send_message(msg.from_user.id,
                            f"Просто отправьте мне *фото человека* (например, Ваше 😄), а я, используя свою "
@@ -159,8 +163,15 @@ async def process_start_command(msg: types.Message):
                            f"/game и впишите ответ в числовом формате, например: `27`",
                            parse_mode=types.ParseMode.MARKDOWN)
 
+    await bot.send_chat_action(msg.from_user.id, 'typing')
+    await asyncio.sleep(4)
 
-@dp.message_handler(commands=['help'])
+    await bot.send_message(msg.from_user.id, f"Кстати! Если хотите узнать интресеные факты об Искусственном "
+                                             f"Интеллекете = **ИИ**, просто напишите мне /facts",
+                           parse_mode=types.ParseMode.MARKDOWN)
+
+
+@dp.message_handler(commands=['help', 'помощь'])
 async def process_help_command(msg: types.Message):
     await msg.reply("/game - Начать игру\n/stop - Окончить игру\n"
                     "Чтобы я мог угадать возраст - просто пришлите мне фото нуного человека")
