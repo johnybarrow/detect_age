@@ -6,3 +6,5 @@ __pycache__
 all_files.json
 result_array.json
 */facts.txt
+*.sh
+*/del_all_pr.py

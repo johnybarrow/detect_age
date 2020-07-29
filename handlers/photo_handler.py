@@ -163,13 +163,6 @@ async def process_start_command(msg: types.Message):
                            f"/game и впишите ответ в числовом формате, например: `27`",
                            parse_mode=types.ParseMode.MARKDOWN)
 
-    await bot.send_chat_action(msg.from_user.id, 'typing')
-    await asyncio.sleep(4)
-
-    await bot.send_message(msg.from_user.id, f"Кстати! Если хотите узнать интресеные факты об Искусственном "
-                                             f"Интеллекете = **ИИ**, просто напишите мне /facts",
-                           parse_mode=types.ParseMode.MARKDOWN)
-
 
 @dp.message_handler(commands=['help', 'помощь'])
 async def process_help_command(msg: types.Message):
